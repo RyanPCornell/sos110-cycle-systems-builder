@@ -300,8 +300,14 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
 .cb-f select,.cb-f input{font:inherit; font-size:.76rem; font-weight:600; color:#22302b; background:#fbfaf6;
   border:1px solid var(--line); border-radius:7px; padding:.24rem .4rem; min-width:0;}
 .cb-f select:focus,.cb-f input:focus{outline:none; border-color:var(--accent); background:#fff;}
-.cb-f.wide{flex:1 1 16rem;} .cb-f.wide input{font-family:'Merriweather',serif; font-weight:700; color:var(--forest);}
-.cb-f.names{flex:0 1 13rem;}
+.cb-f.wide{flex:1 1 11rem;} .cb-f.wide input{font-family:'Merriweather',serif; font-weight:700; color:var(--forest);}
+.cb-f.names{flex:0 1 11rem;}
+.cb-f.code{flex:0 1 9.5rem;}
+.cb-f.code input{font-family:'Inter',sans-serif; font-weight:800; letter-spacing:.05em; text-transform:uppercase;}
+.cb-f.code input::placeholder{text-transform:none; letter-spacing:0; font-weight:500;}
+.cb-f.code input.ok{border-color:#2f7d4f; background:#f1f8f3;}
+.cb-codestat{font-style:normal; letter-spacing:0; text-transform:none; font-weight:700; margin-left:.25rem;}
+.cb-codestat.ok{color:#2f7d4f;} .cb-codestat.no{color:#A4373A;}
 
 .cb-body{flex:1; min-height:0; display:grid; grid-template-columns:clamp(11.5rem,15vw,14rem) minmax(0,1fr) clamp(13rem,17vw,15.5rem); gap:.6rem;}
 
@@ -538,6 +544,9 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
         <input data-title type="text" maxlength="90" placeholder="Choose a cycle and an ecosystem" spellcheck="true"></label>
       <label class="cb-f names"><span>Group members</span>
         <input data-names type="text" maxlength="120" placeholder="Your names" spellcheck="false"></label>
+      <label class="cb-f code"><span>In-class code <i class="cb-codestat" data-codestat></i></span>
+        <input data-code type="text" maxlength="40" placeholder="from the screen" spellcheck="false"
+          autocomplete="off" autocapitalize="characters"></label>
     </div>
 
     <div class="cb-body">
@@ -662,7 +671,8 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
           <button class="cb-x" type="button" data-close aria-label="Close">&times;</button></div>
         <div class="cb-card-b cb-i">
           <p class="cb-i-lead">The builder makes the single illustration the assignment asks for, in its three
-            sections: the <b>Title</b> band across the top, the <b>Diagram</b> on the canvas, and the
+            sections: the <b>Title</b> band across the top (with the in-class code from the screen, which counts
+            as your attendance), the <b>Diagram</b> on the canvas, and the
             <b>Summary</b> you write in its own window. Save as PDF prints all three on one sheet.</p>
 
           <div class="cb-i-rule"><span>The four kinds of piece</span></div>
@@ -720,6 +730,22 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
     var wrap=root.querySelector('[data-cb]'), svg=wrap.querySelector('[data-svg]');
     var G=svg.querySelector('[data-g]'), RUB=svg.querySelector('[data-rub]'), cvwrap=wrap.querySelector('[data-cvwrap]');
     var STORE='sos110-review2-cycle:v1';
+    function r2Code(d){
+      var W=['SAGUARO','MESQUITE','OCOTILLO','CHOLLA','PALOVERDE','CREOSOTE','JAVELINA','ROADRUNNER',
+             'GILA','HAWK','COYOTE','QUAIL','MONSOON','ARROYO','CANYON','MESA','BUTTE','CALICHE','TORTOISE',
+             'BOBCAT','CACTUS','YUCCA','AGAVE','IRONWOOD','SYCAMORE','COTTONWOOD','WILLOW','HERON','FALCON',
+             'OWL','WREN','LIZARD','TOAD','BEETLE','MOTH','SPRING','RIVER','DELTA','DUNE','BASIN','RIDGE',
+             'CLOUD','THUNDER','RAIN','DUST','SUNSET','DAWN','EMBER','CEDAR','JUNIPER','PINYON','ASPEN',
+             'MARIGOLD','POPPY','LUPINE','SAGE','FERN','MOSS','LICHEN','CORAL','OTTER','BISON','ELK','LARK'];
+      var key=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(), s='sos110|review2|'+key+'|cholla', h=2166136261;
+      for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
+      h=h>>>0; return W[h%W.length]+'-'+(10+Math.floor(h/W.length)%90); }
+    function r2Norm(c){ return String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+    /* the date (as a Date) whose code matches, looking back `days` days, or null */
+    function r2CodeMatch(c,days){ var t=r2Norm(c); if(!t) return null; var d=new Date();
+      for(var i=0;i<=days;i++){ var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()-i); if(r2Norm(r2Code(x))===t) return x; }
+      return null; }
+    function r2DayLabel(d){ return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); }
     function $(s){ return wrap.querySelector(s); }
     function $$(s){ return Array.prototype.slice.call(wrap.querySelectorAll(s)); }
     function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -848,7 +874,7 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
 
     /* ═══════ the document: everything Save writes and Open reads ═══════ */
     function blank(){ return {v:1, app:'sos110-cycle-builder', cycle:'', eco:'', ecoOther:'', title:'', titleAuto:true,
-                              names:'', summary:'', nodes:[], links:[], seq:1, zoom:0}; }
+                              names:'', code:'', summary:'', nodes:[], links:[], seq:1, zoom:0}; }
     var doc=blank(), sel=null, mode='move', pend=null;
     var ZW=[1000,1300,1600];
     function WW(){ return ZW[doc.zoom||0]; } function HH(){ return Math.round(WW()*.62); }
@@ -1193,9 +1219,9 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
       window.addEventListener('pointermove',palMove); window.addEventListener('pointerup',palUp); window.addEventListener('pointercancel',palUp); });
 
     /* ═══════ the Title band ═══════ */
-    var bCycle=$('[data-cycle]'), bEco=$('[data-eco]'), bOther=$('[data-ecoother]'), bTitle=$('[data-title]'), bNames=$('[data-names]');
+    var bCycle=$('[data-cycle]'), bEco=$('[data-eco]'), bOther=$('[data-ecoother]'), bTitle=$('[data-title]'), bNames=$('[data-names]'), bCode=$('[data-code]'), bCodeStat=$('[data-codestat]');
     function syncBand(){
-      bCycle.value=doc.cycle||''; bEco.value=doc.eco||''; bOther.value=doc.ecoOther||''; bNames.value=doc.names||'';
+      bCycle.value=doc.cycle||''; bEco.value=doc.eco||''; bOther.value=doc.ecoOther||''; bNames.value=doc.names||''; bCode.value=doc.code||''; codeStatus();
       $('[data-ecoother-wrap]').hidden= doc.eco!=='other';
       bTitle.value= doc.titleAuto? autoTitle() : doc.title; }
     var bandT=null; function bandCommit(){ clearTimeout(bandT); bandT=setTimeout(commit,600); }
@@ -1207,6 +1233,14 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
     bTitle.addEventListener('input',function(){ doc.title=bTitle.value; doc.titleAuto=false; renderPanel(); bandCommit(); });
     bTitle.addEventListener('blur',function(){ if(!bTitle.value.trim()){ doc.titleAuto=true; doc.title=''; bTitle.value=autoTitle(); renderPanel(); commit(); } });
     bNames.addEventListener('input',function(){ doc.names=bNames.value; renderPanel(); bandCommit(); });
+    /* the in-class code: checked against the codes of the last three weeks, so a student finishing
+       at home later still sees it confirmed. A speed bump, not security: the same page generates it. */
+    function codeMatch(){ var c=String(doc.code||'').trim(); return c? r2CodeMatch(c, 21) : null; }
+    function codeStatus(){ var c=String(doc.code||'').trim(), m=codeMatch();
+      bCodeStat.textContent= !c? '' : m? '\u2713 '+r2DayLabel(m) : 'not recognized';
+      bCodeStat.className='cb-codestat'+(c? (m? ' ok' : ' no') : '');
+      bCode.classList.toggle('ok',!!m); }
+    bCode.addEventListener('input',function(){ doc.code=bCode.value; codeStatus(); renderPanel(); bandCommit(); });
 
     /* ═══════ feedback loops: arrows, plus pipes (an inflow raises its stock, an outflow lowers it) ═══════ */
     function findLoops(){
@@ -1237,7 +1271,8 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
         {ok: fl.length>=3 && flOk===fl.length, t:'Processes shown as directional flows', d: fl.length? flOk+' of '+fl.length+' piped and named'+(fl.length<3? ', add at least 3' : '') : 'none yet'},
         {ok: huLinked.length>=2 && huExpl.length>=2, t:'Two or more human impacts, illustrated and explained', d: hu.length? huLinked.length+' on the diagram, '+huExpl.length+' explained' : 'none yet'},
         {ok: ctxOk, t:'Grounded in a named ecosystem', d: c? (c.ok? c.n : 'sulfur is the example only')+(ecoName()? ' · '+ecoName() : ', choose an ecosystem') : 'choose a cycle'},
-        {ok: !!titleText() && String(doc.summary||'').trim().length>=60, t:'Title and synthesis statement', d: !titleText()? 'no title yet' : String(doc.summary||'').trim().length<60? 'open ✎ Summary' : 'written'}
+        {ok: String(doc.summary||'').trim().length>=60, t:'Summary written', d: String(doc.summary||'').trim().length>=60? 'synthesis statement written' : 'open ✎ Summary'},
+        {ok: !!titleText() && !!codeMatch(), t:'Title and in-class code', d: !titleText()? 'no title yet' : !String(doc.code||'').trim()? 'enter the code from the screen' : codeMatch()? 'code matches '+r2DayLabel(codeMatch()) : 'code not recognized'}
       ];
       return {st:st, fl:fl, hu:hu, vr:vr, checks:checks, loops:findLoops()}; }
     function renderPanel(){
@@ -1369,7 +1404,7 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
     function clean(d){
       if(!d || typeof d!=='object' || !Array.isArray(d.nodes) || !Array.isArray(d.links)) return null;
       var o=blank(), K={stock:1,flow:1,var:1,human:1}, ids={};
-      ['cycle','eco','ecoOther','title','names','summary'].forEach(function(k){ if(typeof d[k]==='string') o[k]=d[k].slice(0, k==='summary'? 4000 : 160); });
+      ['cycle','eco','ecoOther','title','names','code','summary'].forEach(function(k){ if(typeof d[k]==='string') o[k]=d[k].slice(0, k==='summary'? 4000 : 160); });
       if(!CYC[o.cycle]) o.cycle=''; if(!ECO[o.eco]) o.eco='';
       o.titleAuto= d.titleAuto!==false; o.zoom=clamp(+d.zoom||0,0,ZW.length-1);
       d.nodes.forEach(function(n){ if(!n || !K[n.k] || typeof n.id!=='string' || ids[n.id]) return; var x=+n.x, y=+n.y; if(!isFinite(x)||!isFinite(y)) return;
@@ -1437,6 +1472,10 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
       '.k{font-size:7.5pt;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#7a5a2f}'+
       'h1{font-family:Merriweather,Georgia,serif;font-size:19pt;line-height:1.2;color:#1A3C34;margin:3px 0 4px}'+
       '.meta{font-size:9pt;color:#4a5a52}.meta b{color:#1A3C34}'+
+      'header{display:flex;justify-content:space-between;gap:14px;align-items:flex-end}'+
+      '.code{flex:none;text-align:right;border:1.5px solid #2f6f6a;border-radius:6px;padding:4px 9px}'+
+      '.code .k{color:#2f6f6a}.code b{display:block;font-size:13pt;letter-spacing:.06em;color:#1A3C34}'+
+      '.code i{display:block;font-style:normal;font-size:7.5pt;color:#2f6f6a}.code.no{border-color:#c9a3a4}.code.no i{color:#A4373A}'+
       'header{padding-bottom:8px;border-bottom:2px solid #1A3C34;margin-bottom:10px}'+
       'h2{font-family:Merriweather,Georgia,serif;font-size:10.5pt;color:#1A3C34;margin:0 0 5px;padding-bottom:3px;border-bottom:1px solid #dde4dc}'+
       'figure{border:1px solid #e3dccb;border-radius:6px;padding:6px;background:#fdfaf3;page-break-inside:avoid}'+
@@ -1453,7 +1492,9 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
     function exportPDF(){
       closeInsp();
       var title=titleText()||'Untitled cycle', c=cyc(), when=new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
-      var vb=cropBox(), hu=doc.nodes.filter(isHuman);
+      var vb=cropBox(), hu=doc.nodes.filter(isHuman), cm=codeMatch(), cd=String(doc.code||'').trim();
+      var codeBox= cd? '<div class="code'+(cm?'':' no')+'"><div class="k">In-class code</div><b>'+esc(cd)+'</b><i>'+(cm? 'matches class on '+esc(r2DayLabel(cm)) : 'not an in-class code')+'</i></div>'
+                     : '<div class="code no"><div class="k">In-class code</div><b>&mdash;</b><i>none entered</i></div>';
       var meta=[]; if(c) meta.push('<b>Cycle</b> '+esc(c.n)); if(ecoName()) meta.push('<b>Ecosystem</b> '+esc(ecoName()));
       if(doc.names.trim()) meta.push('<b>Group</b> '+esc(doc.names.trim())); meta.push(when);
       var legend='<span><i style="border-color:#7a5a2f;background:#fffaf1"></i>Stock</span>'+
@@ -1465,7 +1506,7 @@ img.bleed{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
       var doc2='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title>'+
         '<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:ital,wght@0,400;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">'+
         '<style>'+PRINT_CSS+'</style></head><body>'+
-        '<header><div class="k">SOS 110 &middot; In-Class Review Assignment 2</div><h1>'+esc(title)+'</h1><div class="meta">'+meta.join(' &nbsp;&middot;&nbsp; ')+'</div></header>'+
+        '<header><div><div class="k">SOS 110 &middot; In-Class Review Assignment 2</div><h1>'+esc(title)+'</h1><div class="meta">'+meta.join(' &nbsp;&middot;&nbsp; ')+'</div></div>'+codeBox+'</header>'+
         '<figure><svg viewBox="'+vb.map(r1).join(' ')+'" xmlns="http://www.w3.org/2000/svg">'+diagram(true)+'</svg><figcaption>'+legend+'</figcaption></figure>'+
         '<section><h2>Summary</h2>'+(String(doc.summary||'').trim()? '<p class="syn">'+pesc(doc.summary.trim())+'</p>' : '<p class="syn miss">No synthesis statement yet.</p>')+humHTML+'</section>'+
         '<footer>Built in the Cycle Systems Builder. SOS 110. Every student uploads their own copy on Canvas.</footer></body></html>';
